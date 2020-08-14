@@ -1,0 +1,55 @@
+version: "3.7"
+services:
+  cryptostore:
+   logging:
+     driver: "json-file"
+     options:
+       max-size: "2000k"
+       max-file: "10"
+   depends_on:
+     - "influxdb"
+   build:
+     context: .
+     dockerfile: Dockerfile
+  redisdb:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2000k"
+        max-file: "10"
+    image: redis:5.0.8
+    ports:
+      - '6379:6379'
+    expose:
+      - 6379
+    command: ["redis-server", "--save", "''", "--appendonly", "no"]
+  influxdb:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2000k"
+        max-file: "10"
+    environment:
+      - INFLUXDB_CONTINUOUS_QUERIES_QUERY_STATS_ENABLED=true
+    container_name: influxdb
+    image: influxdb:1.7
+    volumes:
+      - ../data/influxdb:/var/lib/influxdb
+    ports:
+      - '8086:8086'
+    expose:
+      - 8086
+  chronograf:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2000k"
+        max-file: "10"
+    container_name: chronograf
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+    image: chronograf:1.8
+    ports:
+      - '8888:8888'
+    expose:
+      - 8888

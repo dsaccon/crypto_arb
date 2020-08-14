@@ -1,0 +1,30 @@
+# Cryptostore sample config file for Docker
+
+cache: redis
+
+redis:
+    ip: '127.0.0.1'
+    port: 6379
+    del_after_read: true
+    start_flush: true
+    socket: null
+
+exchanges:
+    BITMEX:
+        trades: [XBTUSD]
+    COINBASE:
+        trades: [BTC-USD, ETH-USD, ETH-BTC]
+
+storage: influx
+
+influx:
+    host: 'http://localhost:8086'
+    db: crypto
+    create: true
+
+storage_interval: 1
+
+plugins:
+  backfill:
+    module: [cryptostore.plugin.backfill, Backfill]
+    config: config.yaml
