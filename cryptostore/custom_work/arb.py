@@ -28,6 +28,7 @@ def create_arb_dict(data):
 
 def combine_vols(data):
     # Utility used by calc_arbs
+    # Aggregate like-price trades into one with combined vol
     new_trades = [data[0]]
     if len(data) > 1:
         for tr in data[1:]:
@@ -68,25 +69,20 @@ def filter_arb_opps(data):
 
     # Combine vols of equal price levels in data
     for (ex_p, p) in ((_ex_p, _p) for _ex_p in arb_opps for _p in arb_opps[_ex_p]):
-        # Filter any 
         ex_p_0 = ex_p.split('/')[0]
         ex_p_1 = ex_p.split('/')[1]
         num_uniq_b = len({_p['price'] for _p in data[ex_p_0][p]['b']})
         num_uniq_a = len({_p['price'] for _p in data[ex_p_0][p]['a']})
         if not num_uniq_b == len(data[ex_p_0][p]['b']):
-            # Combine vols here
             data[ex_p_0][p]['b'] = combine_vols(data[ex_p_0][p]['b'])
         if not num_uniq_a == len(data[ex_p_0][p]['a']):
-            # Combine vols here
             data[ex_p_0][p]['a'] = combine_vols(data[ex_p_0][p]['a'])
         #
         num_uniq_b = len({_p['price'] for _p in data[ex_p_1][p]['b']})
         num_uniq_a = len({_p['price'] for _p in data[ex_p_1][p]['a']})
         if not num_uniq_b == len(data[ex_p_1][p]['b']):
-            # Combine vols here
             data[ex_p_1][p]['b'] = combine_vols(data[ex_p_1][p]['b'])
         if not num_uniq_a == len(data[ex_p_1][p]['a']):
-            # Combine vols here
             data[ex_p_1][p]['a'] = combine_vols(data[ex_p_1][p]['a'])
     print(json.dumps(arb_opps, indent=4)) ### tmp
     return arb_opps, data
@@ -129,7 +125,7 @@ def get_arbs(data):
     return arbs
 
 if __name__ == '__main__':
-    with open('data_arb.json', 'r') as f:
+    with open('data_arb_test.json', 'r') as f:
         data = json.loads(f.read())
     arbs = get_arbs(data)
     print(json.dumps(arbs, indent=4))
