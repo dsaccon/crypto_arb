@@ -84,7 +84,6 @@ def filter_arb_opps(data):
             data[ex_p_1][p]['b'] = combine_vols(data[ex_p_1][p]['b'])
         if not num_uniq_a == len(data[ex_p_1][p]['a']):
             data[ex_p_1][p]['a'] = combine_vols(data[ex_p_1][p]['a'])
-    print(json.dumps(arb_opps, indent=4)) ### tmp
     return arb_opps, data
 
 def calc_arbs(arb_opps, data, target, mode='arb_vol'):
@@ -103,7 +102,8 @@ def calc_arbs(arb_opps, data, target, mode='arb_vol'):
                         'arb_yld': _arb,
                         'vol': min(
                             data_0['amount'],
-                            data_1['amount'])
+                            data_1['amount']),
+                        'dir': 'UP',
                     }
             elif 'd' in arb_opps[ex_p][p]:
                 # Calc arb for ex_p_1 -> ex_p_0 dir
@@ -115,13 +115,22 @@ def calc_arbs(arb_opps, data, target, mode='arb_vol'):
                         'arb_yld': _arb,
                         'vol': min(
                             data_0['amount'],
-                            data_1['amount'])
+                            data_1['amount']),
+                        'dir': 'DOWN',
                     }
     return arbs
 
 def get_arbs(data):
     arb_opps, new_data = filter_arb_opps(create_arb_dict(data))
     arbs = calc_arbs(arb_opps, new_data, 0.2, mode='arb_vol')
+    arbs = {
+        ex_p:{
+            _p:arbs[ex_p][_p] for _p,a in p.items()
+            if not ('u' in a or 'd' in a)
+        }
+        for ex_p,p in arbs.items()
+    }
+    arbs = {ex_p:p for ex_p,p in arbs.items() if p}
     return arbs
 
 if __name__ == '__main__':

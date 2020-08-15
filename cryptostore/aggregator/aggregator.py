@@ -9,12 +9,14 @@ from multiprocessing import Process
 import time
 import logging
 import os
+import json ### tmp
 from datetime import timedelta
 
 TRADES = 'trades'
 STATS = 'stats'
 
 from cryptostore.custom_work.stats2 import init_cache, update_stats, InfluxConfig, Trade
+from cryptostore.custom_work import arb
 from cryptostore.util import get_time_interval
 from cryptostore.aggregator.redis import Redis
 from cryptostore.aggregator.kafka import Kafka
@@ -137,7 +139,7 @@ class Aggregator(Process):
                         wait = 0.5
                     else:
                         LOG.warning(f"Storage operations took {total}s, interval {interval}s")
-                    print(data_arb) ### tmp
+                    arbs = arb.get_arbs(data_arb) ###
                     await asyncio.sleep(wait)
                 else:
                     await asyncio.sleep(30)
