@@ -93,18 +93,23 @@ class Aggregator(Process):
                         interval_start = end + timedelta(seconds=interval + 1)
                     start, end = get_time_interval(interval_start, base_interval, multiplier=multiplier)
                 if 'exchanges' in self.config and self.config.exchanges:
+                    store = Storage(self.config) ### tmp
+                    data_arb = {}
                     for exchange in self.config.exchanges:
+                        data_arb[exchange] = {}
                         for dtype in self.config.exchanges[exchange]:
                             # Skip over the retries arg in the config if present.
                             if dtype in {'retries', 'channel_timeouts'}:
                                 continue
-                            for pair in self.config.exchanges[exchange][dtype] if 'symbols' not in \
-                                                                                  self.config.exchanges[exchange][
-                                                                                      dtype] else \
-                                    self.config.exchanges[exchange][dtype]['symbols']:
-                                store = Storage(self.config)
+#                            for pair in self.config.exchanges[exchange][dtype] if 'symbols' not in \
+#                                                                                  self.config.exchanges[exchange][
+#                                                                                      dtype] else \
+#                                    self.config.exchanges[exchange][dtype]['symbols']:
+                            for pair in self.config.exchanges[exchange][dtype]: ### tmp
+#                                store = Storage(self.config)
                                 LOG.info('Reading %s-%s-%s', exchange, dtype, pair)
                                 data = cache.read(exchange, dtype, pair, start=start, end=end)
+                                data_arb[exchange][pair] = data
                                 if len(data) == 0:
                                     LOG.info('No data for %s-%s-%s', exchange, dtype, pair)
                                     continue
@@ -130,6 +135,9 @@ class Aggregator(Process):
                         LOG.warning("Storage operations currently take %.1f seconds, longer than the interval of %d",
                                     total, interval)
                         wait = 0.5
+                    else:
+                        LOG.warning(f"Storage operations took {total}s, interval {interval}s")
+                    print(data_arb) ### tmp
                     await asyncio.sleep(wait)
                 else:
                     await asyncio.sleep(30)
