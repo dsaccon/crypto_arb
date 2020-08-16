@@ -22,6 +22,7 @@ from cryptostore.aggregator.redis import Redis
 from cryptostore.aggregator.kafka import Kafka
 from cryptostore.data.storage import Storage
 from cryptostore.config import DynamicConfig
+from webserver.src.async_mysql import MySQLClient
 
 LOG = logging.getLogger('cryptostore')
 
@@ -31,11 +32,16 @@ class Aggregator(Process):
         self.config_file = config_file
         super().__init__()
         self.daemon = True
+        self.mysql_client = None
+        self.mysql_last_arb_id = None
 
     def run(self):
         LOG.info("Aggregator running on PID %d", os.getpid())
         loop = asyncio.get_event_loop()
         self.config = DynamicConfig(file_name=self.config_file)
+        self.mysql_client = MySQLClient(loop)
+        _last_arb_id = loop.run_until_complete(self.mysql_client.get_last_arb_id())
+        self.mysql_last_arb_id = int(_last_arb_id[0])
         loop.create_task(self.loop())
         try:
             loop.run_forever()
@@ -131,6 +137,29 @@ class Aggregator(Process):
 
                                 cache.delete(exchange, dtype, pair)
                                 LOG.info('Write Complete %s-%s-%s', exchange, dtype, pair)
+                    #
+                    arbs = arb.get_arbs(data_arb) ###
+                    print(json.dumps(arbs, indent=4)) ### tmp
+                    self.mysql_last_arb_id += 1
+                    row = {
+                        'arb_id': self.mysql_last_arb_id,
+                        'ask_price': 1,
+			'bid_price': 2,
+                        'volume': 10,
+                        'base_currency': 'BTC',
+                        'quote_currency': 'USD',
+                        'instrument_pair': 'BTC-USD',
+                        'ask_exchange': 'BINANCE',
+                        'bid_exchange': 'OKEX',
+                        'arb': 0.1,
+                        'arb_type': 'arb_vol',
+                        'profit': 3,
+                        'timestamp': time.time()
+	            }
+
+                    mysql_task = [self.mysql_client.insert_dict('Arb', row)]
+                    await asyncio.gather(*mysql_task)
+                    #
                     total = time.time() - aggregation_start
                     wait = interval - total
                     if wait <= 0:
@@ -139,7 +168,6 @@ class Aggregator(Process):
                         wait = 0.5
                     else:
                         LOG.warning(f"Storage operations took {total}s, interval {interval}s")
-                    arbs = arb.get_arbs(data_arb) ###
                     await asyncio.sleep(wait)
                 else:
                     await asyncio.sleep(30)
