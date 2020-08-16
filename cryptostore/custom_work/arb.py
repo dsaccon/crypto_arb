@@ -124,7 +124,7 @@ def calc_arbs(arb_opps, data, target, mode='arb_vol'):
 
 def get_arbs(data):
     arb_opps, new_data = filter_arb_opps(create_arb_dict(data))
-    arbs = calc_arbs(arb_opps, new_data, 0.2, mode='arb_vol')
+    arbs = calc_arbs(arb_opps, new_data, 0, mode='arb_vol')
     arbs = {
         ex_p:{
             _p:arbs[ex_p][_p] for _p,a in p.items()
