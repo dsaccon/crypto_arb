@@ -5,7 +5,12 @@ import requests
 import tornado
 
 from src.configs import host, db, exchanges, get_currencies_in_pair
-from src.async_mysql import MySQLClient
+from webserver.src.async_mysql import MySQLClient
+
+
+loop = asyncio.get_event_loop()
+self.config = DynamicConfig(file_name=self.config_file)
+self.mysql_client = MySQLClient(loop)
 
 
 def get_arbs(
