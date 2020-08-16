@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir arctic
 
 COPY setup.py /
 COPY cryptostore /cryptostore
+COPY webserver/src/async_mysql.py /webserver/src/async_mysql.py
 
 ## Add any keys, config files, etc needed here
 # COPY access-key.json /
@@ -23,4 +24,4 @@ RUN pip install -e .
 
 COPY config.yaml /config.yaml
 
-ENTRYPOINT [ "cryptostore" ]
+CMD [ "cryptostore" ]
