@@ -1,5 +1,7 @@
-version: "3.7"
+version: "3.3"
+
 services:
+
   cryptostore:
    logging:
      driver: "json-file"
@@ -11,6 +13,7 @@ services:
    build:
      context: .
      dockerfile: Dockerfile
+
   redisdb:
     logging:
       driver: "json-file"
@@ -23,6 +26,7 @@ services:
     expose:
       - 6379
     command: ["redis-server", "--save", "''", "--appendonly", "no"]
+
   influxdb:
     logging:
       driver: "json-file"
@@ -39,6 +43,7 @@ services:
       - '8086:8086'
     expose:
       - 8086
+
   chronograf:
     logging:
       driver: "json-file"
@@ -53,3 +58,20 @@ services:
       - '8888:8888'
     expose:
       - 8888
+
+  mysql:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2000k"
+        max-file: "10"
+    container_name: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    image: "mysql/mysql-server"
+    volumes:
+      - .mysql:/etc/mysql/
+    ports:
+      - "3306:3306"
+    expose:
+      - 3306
