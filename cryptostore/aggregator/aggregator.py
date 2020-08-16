@@ -9,7 +9,6 @@ from multiprocessing import Process
 import time
 import logging
 import os
-import json ### tmp
 from datetime import timedelta
 
 TRADES = 'trades'
@@ -41,7 +40,10 @@ class Aggregator(Process):
         self.config = DynamicConfig(file_name=self.config_file)
         self.mysql_client = MySQLClient(loop)
         _last_arb_id = loop.run_until_complete(self.mysql_client.get_last_arb_id())
-        self.mysql_last_arb_id = int(_last_arb_id[0])
+        if not _last_arb_id == None:
+            self.mysql_last_arb_id = int(_last_arb_id[0])
+        else:
+            self.mysql_last_arb_id = 0
         loop.create_task(self.loop())
         try:
             loop.run_forever()
@@ -164,31 +166,6 @@ class Aggregator(Process):
                                 cache.delete(exchange, dtype, pair)
                                 LOG.info('Write Complete %s-%s-%s', exchange, dtype, pair)
                     #
-#                    arbs = arb.get_arbs(data_arb)
-#                    rows = []
-#                    row = {}
-#                    for ex_pair in arbs:
-#                        for p, _arb in arbs[ex_pair].items():
-#                            self.mysql_last_arb_id += 1
-#                            row = {
-#                                'arb_id': self.mysql_last_arb_id,
-#                                'ask_price': 1,
-#                                'bid_price': 2,
-#                                'volume': _arb['vol'],
-#                                'base_currency': p.split('-')[0],
-#                                'quote_currency': p.split('-')[1],
-#                                'instrument_pair': p,
-#                                'ask_exchange': ex_pair.split('/')[0],
-#                                'bid_exchange': ex_pair.split('/')[1],
-#                                'arb': _arb['arb_yld'],
-#                                'arb_type': _arb['mode'],
-#                                'profit': 3,
-#                                'timestamp': time.time()
-#                            }
-#                            rows.append(row)
-#
-#                    mysql_task = [self.mysql_client.insert_dicts('Arb', rows)]
-#                    await asyncio.gather(*mysql_task)
                     if data_arb:
                         await self.write_arbs(data_arb)
                     #
