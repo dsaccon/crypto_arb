@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir pyarrow
 RUN pip install --no-cache-dir redis
 RUN pip install --no-cache-dir aioredis
 RUN pip install --no-cache-dir arctic
+RUN pip uninstall PyMySQL # Fix dependency issue from aiomysql
+RUN pip install --no-cache-dir PyMySQL==0.9.2
 
 COPY setup.py /
 COPY cryptostore /cryptostore
