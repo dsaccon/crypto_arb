@@ -50,6 +50,32 @@ class Aggregator(Process):
         except Exception:
             LOG.error("Aggregator running on PID %d died due to exception", os.getpid(), exc_info=True)
 
+    async def write_arbs(self, data):
+        arbs = arb.get_arbs(data)
+        rows = []
+        row = {}
+        for ex_pair in arbs:
+            for p, _arb in arbs[ex_pair].items():
+                self.mysql_last_arb_id += 1
+                row = {
+                    'arb_id': self.mysql_last_arb_id,
+                    'ask_price': 1,
+                    'bid_price': 2,
+                    'volume': _arb['vol'],
+                    'base_currency': p.split('-')[0],
+                    'quote_currency': p.split('-')[1],
+                    'instrument_pair': p,
+                    'ask_exchange': ex_pair.split('/')[0],
+                    'bid_exchange': ex_pair.split('/')[1],
+                    'arb': _arb['arb_yld'],
+                    'arb_type': _arb['mode'],
+                    'profit': 3,
+                    'timestamp': time.time()
+                }
+                rows.append(row)
+        mysql_task = [self.mysql_client.insert_dicts('Arb', rows)]
+        await asyncio.gather(*mysql_task)
+
     async def loop(self):
         if self.config.cache == 'redis':
             cache = Redis(ip=self.config.redis['ip'],
@@ -138,27 +164,33 @@ class Aggregator(Process):
                                 cache.delete(exchange, dtype, pair)
                                 LOG.info('Write Complete %s-%s-%s', exchange, dtype, pair)
                     #
-                    arbs = arb.get_arbs(data_arb) ###
-                    print(json.dumps(arbs, indent=4)) ### tmp
-                    self.mysql_last_arb_id += 1
-                    row = {
-                        'arb_id': self.mysql_last_arb_id,
-                        'ask_price': 1,
-			'bid_price': 2,
-                        'volume': 10,
-                        'base_currency': 'BTC',
-                        'quote_currency': 'USD',
-                        'instrument_pair': 'BTC-USD',
-                        'ask_exchange': 'BINANCE',
-                        'bid_exchange': 'OKEX',
-                        'arb': 0.1,
-                        'arb_type': 'arb_vol',
-                        'profit': 3,
-                        'timestamp': time.time()
-	            }
-
-                    mysql_task = [self.mysql_client.insert_dict('Arb', row)]
-                    await asyncio.gather(*mysql_task)
+#                    arbs = arb.get_arbs(data_arb)
+#                    rows = []
+#                    row = {}
+#                    for ex_pair in arbs:
+#                        for p, _arb in arbs[ex_pair].items():
+#                            self.mysql_last_arb_id += 1
+#                            row = {
+#                                'arb_id': self.mysql_last_arb_id,
+#                                'ask_price': 1,
+#                                'bid_price': 2,
+#                                'volume': _arb['vol'],
+#                                'base_currency': p.split('-')[0],
+#                                'quote_currency': p.split('-')[1],
+#                                'instrument_pair': p,
+#                                'ask_exchange': ex_pair.split('/')[0],
+#                                'bid_exchange': ex_pair.split('/')[1],
+#                                'arb': _arb['arb_yld'],
+#                                'arb_type': _arb['mode'],
+#                                'profit': 3,
+#                                'timestamp': time.time()
+#                            }
+#                            rows.append(row)
+#
+#                    mysql_task = [self.mysql_client.insert_dicts('Arb', rows)]
+#                    await asyncio.gather(*mysql_task)
+                    if data_arb:
+                        await self.write_arbs(data_arb)
                     #
                     total = time.time() - aggregation_start
                     wait = interval - total
