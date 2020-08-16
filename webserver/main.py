@@ -11,6 +11,7 @@ def make_app():
     return tornado.web.Application([
         (r"/trades", trades.TradesHandler),
         (r"/dashboard", dashboard.DashboardHandler),
+        (r"/arb", arb.ArbHandler),
     ])
 
 if __name__ == "__main__":
