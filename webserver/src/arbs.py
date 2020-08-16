@@ -2,15 +2,10 @@ from datetime import datetime
 import json
 
 import requests
-import tornado
+import tornado.web
+import pymysql
 
-from src.configs import host, db, exchanges, get_currencies_in_pair
-from webserver.src.async_mysql import MySQLClient
-
-
-loop = asyncio.get_event_loop()
-self.config = DynamicConfig(file_name=self.config_file)
-self.mysql_client = MySQLClient(loop)
+from webserver.src.configs import host, db, exchanges, get_currencies_in_pair
 
 
 def get_arbs(
@@ -68,27 +63,31 @@ def get_arbs(
         } for trade in trades]
     return sorted(trades_ret, key=lambda x: -x['timestamp'])
 
+def get_latest_arbs(period=10):
+    mysql_client = pymysql.connect(
+        host='localhost',
+        user='root',
+        password='root',
+        db='crypto',
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor)
+    query = f'SELECT * FROM Arb WHERE FROM_UNIXTIME( timestamp ) > date_sub(now(), interval {period} second)'
+    try:
+        with mysql_client.cursor() as cursor:
+            cursor.execute(query)
+            result = cursor.fetchall()
+    finally:
+        mysql_client.close()
+    return result
 
-class TradesHandler(tornado.web.RequestHandler):
+class ArbHandler(tornado.web.RequestHandler):
     def post(self):
         json_body = tornado.escape.json_decode(self.request.body)
-        trades = get_trades(
-            allowed_exchanges=json_body.get('exchanges'),
-            currencies1=json_body.get('currencies1'),
-            currencies2=json_body.get('currencies2'),
-            from_ts=json_body.get('fromTs'),
-            to_ts=json_body.get('toTs'),
-            limit=1000,
-            min_price=json_body.get('minPrice'),
-            max_price=json_body.get('maxPrice'),
-            min_amount=json_body.get('minAmount'),
-            max_amount=json_body.get('maxAmount'),
-            side=json_body.get('side'),
-        )
+        arbs = get_latest_arbs()
         self.set_header("Content-Type", "application/json")
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
-        self.write(json.dumps(trades))
+        self.write(json.dumps(arbs))
 
     def options(self):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -96,3 +95,16 @@ class TradesHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
         self.write('')
 
+class ArbsHandler(tornado.web.RequestHandler):
+    def get(self):
+        arbs = get_latest_arbs()
+        self.set_header("Content-Type", "application/json")
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+        self.write(json.dumps(arbs, indent=4))
+
+    def options(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+        self.write('')
