@@ -99,6 +99,7 @@ def calc_arbs(arb_opps, data, target, mode='arb_vol'):
                 _arb = 100*(data_1['price']/data_0['price'] - 1)
                 if _arb > target:
                     arbs[ex_p][p] = {
+                        'mode': 'yield_target',
                         'arb_yld': _arb,
                         'vol': min(
                             data_0['amount'],
@@ -112,6 +113,7 @@ def calc_arbs(arb_opps, data, target, mode='arb_vol'):
                 _arb = 100*(data_0['price']/data_1['price'] - 1)
                 if _arb > target:
                     arbs[ex_p][p] = {
+                        'mode': 'yield_target',
                         'arb_yld': _arb,
                         'vol': min(
                             data_0['amount'],
