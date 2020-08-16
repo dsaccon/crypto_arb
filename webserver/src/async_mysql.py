@@ -25,15 +25,6 @@ class MySQLClient:
 		'arb_type',
 		'profit',
                 'timestamp',
-#                'hedge_market',  # varchar(64)
-#                'wanted_hedge_price',  # decimal
-#                'avail_hedge_price',  # decimal
-#                'order_send_time',  # bigint
-#                'expected_price'  # decimal
-#                'hedge_market_code',  # varchar(8)
-#                'market_code'  # varchar(8)
-#                # wanted_basis
-#                # actual_basis
             ),
         }
 
