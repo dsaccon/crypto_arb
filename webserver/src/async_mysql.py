@@ -41,12 +41,21 @@ class MySQLClient:
         pass
 
     async def get_last_arb_id(self):
+        query = 'SELECT arb_id FROM Arb ORDER BY timestamp DESC LIMIT 1'
+        result = await self.query(query, num_rows=1)
+        return result
+
+    async def query(self, query, num_rows=1):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                query = 'SELECT arb_id FROM Arb ORDER BY timestamp DESC LIMIT 1'
                 await cursor.execute(query)
-                result = await cursor.fetchone()
-                return result
+                if num_rows == 'all':
+                    result = await cursor.fetchall()
+                    return result
+
+                for row in range(num_rows):
+                    result = await cursor.fetchone()
+                    return result
 
     async def insert_dict(self, table, row):
         names = []
@@ -64,6 +73,29 @@ class MySQLClient:
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(query, values)
+            await conn.commit()
+
+    async def insert_dicts(self, table, rows):
+        # Insert data for multiple rows in one command
+        # rows - list of dicts: [{..}, .. {..}]
+        names = []
+        value_types = []
+        values = []
+        # Assumes all dicts have same set of keys
+        for i, row in enumerate(rows):
+            values.append([])
+            for k, v in row.items():
+                if i == 0:
+                    names.append('`' + k + '`')
+                    value_types.append('%s')
+                values[i].append(v)
+        value_types = ','.join(value_types)
+        names = ','.join(names)
+        query = f'INSERT INTO `{table}` ({names}) VALUES ({value_types})'
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.executemany(query, values)
             await conn.commit()
 
     async def insert(self, table, values):
