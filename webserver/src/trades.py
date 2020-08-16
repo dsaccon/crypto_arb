@@ -4,7 +4,7 @@ import json
 import requests
 import tornado
 
-from src.configs import host, db, exchanges, get_currencies_in_pair
+from webserver.src.configs import host, db, exchanges, get_currencies_in_pair
 
 
 def get_trades(

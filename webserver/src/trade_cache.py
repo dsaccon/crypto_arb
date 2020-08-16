@@ -4,7 +4,7 @@ import time
 from cryptostore.aggregator.redis import Redis
 
 from cryptostore.custom_work.stats2 import granularities
-from src.configs import host, db, exchange_names, redis_host, get_currencies_in_pair, get_pair_from_currencies
+from webserver.src.configs import host, db, exchange_names, redis_host, get_currencies_in_pair, get_pair_from_currencies
 
 NOW = 'now'
 

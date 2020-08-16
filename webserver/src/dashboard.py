@@ -2,8 +2,8 @@ import json
 
 import tornado
 
-from src.configs import spot_exchange_names, futures_exchange_names
-from src.trade_cache import get_prices_cache, get_price_changes, NOW, \
+from webserver.src.configs import spot_exchange_names, futures_exchange_names
+from webserver.src.trade_cache import get_prices_cache, get_price_changes, NOW, \
     get_volumes_cache, get_volume_change
 
 
