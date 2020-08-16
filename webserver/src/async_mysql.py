@@ -32,8 +32,31 @@ class MySQLClient:
         pass
 
     async def get_last_arb_id(self):
-        query = 'SELECT arb_id FROM Arb ORDER BY timestamp DESC LIMIT 1'
+        query = 'SELECT arb_id FROM Arb ORDER BY CONVERT(arb_id, UNSIGNED) DESC LIMIT 1'
         result = await self.query(query, num_rows=1)
+        return result
+
+    async def reset_table(self):
+        query = 'DROP TABLE Arb'
+        result = await self.query(query)
+        #
+        query = (
+            f'CREATE TABLE Arb('
+                f'arb_id VARCHAR(64),'
+                f'ask_price VARCHAR(64),'
+                f'bid_price VARCHAR(64),'
+                f'volume VARCHAR(64),'
+                f'base_currency VARCHAR(32),'
+                f'quote_currency VARCHAR(32),'
+                f'instrument_pair VARCHAR(32),'
+                f'ask_exchange VARCHAR(32),'
+                f'bid_exchange VARCHAR(32),'
+                f'arb VARCHAR(64),'
+                f'arb_type VARCHAR(32),'
+                f'profit VARCHAR(64),'
+                f'timestamp VARCHAR(64),'
+                f'PRIMARY KEY ( arb_id ))')
+        result = await self.query(query)
         return result
 
     async def query(self, query, num_rows=1):
