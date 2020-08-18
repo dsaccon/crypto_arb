@@ -86,8 +86,8 @@ def filter_arb_opps(data):
             data[ex_p_1][p]['a'] = combine_vols(data[ex_p_1][p]['a'])
     return arb_opps, data
 
-def calc_arbs(arb_opps, data, target, mode='arb_vol'):
-    arbs = copy.deepcopy(arb_opps)
+def calc_arbs(arb_opps, data, target, last_id, mode='arb_vol'):
+    arbs = []
     for ex_p in arb_opps:
         ex_p_0 = ex_p.split('/')[0]
         ex_p_1 = ex_p.split('/')[1]
@@ -96,44 +96,60 @@ def calc_arbs(arb_opps, data, target, mode='arb_vol'):
                 # Calc arb for ex_p_0 -> ex_p_1 dir
                 data_0 = data[ex_p_0][p]['b'][0]
                 data_1 = data[ex_p_1][p]['a'][0]
-                _arb = 100*(data_1['price']/data_0['price'] - 1)
-                if _arb > target:
-                    arbs[ex_p][p] = {
+                arb_spr = data_1['price'] - data_0['price']
+                arb_yld = 100*(arb_spr/data_0['price'])
+                vol = min(data_0['amount'], data_1['amount'])
+                last_id += 1
+                ts = max(data_0['timestamp'], data_1['timestamp'])
+                if arb_yld > target:
+                    arbs.append({
+                        'arb_id': last_id,
                         'mode': 'yield_target',
-                        'arb_yld': _arb,
-                        'vol': min(
-                            data_0['amount'],
-                            data_1['amount']),
-                        'dir': 'UP',
-                    }
+			'base_currency': data_0['pair'].split('-')[0],
+			'quote_currency': data_0['pair'].split('-')[1],
+			'instrument_pair': data_0['pair'],
+			'ask_exchange': data_1['feed'],
+			'bid_exchange': data_0['feed'],
+                        'arb': arb_spr,
+                        'arb_yield': arb_yld,
+                        'volume': vol,
+			'profit': vol*arb_spr,
+			'ask_price': data_1['price'],
+			'bid_price': data_0['price'],
+			'timestamp': ts,
+                    })
             elif 'd' in arb_opps[ex_p][p]:
                 # Calc arb for ex_p_1 -> ex_p_0 dir
                 data_0 = data[ex_p_0][p]['a'][0]
                 data_1 = data[ex_p_1][p]['b'][0]
-                _arb = 100*(data_0['price']/data_1['price'] - 1)
-                if _arb > target:
-                    arbs[ex_p][p] = {
+                arb_spr = data_0['price'] - data_1['price']
+                arb_yld = 100*(arb_spr/data_1['price'])
+                vol = min(data_0['amount'], data_1['amount'])
+                last_id += 1
+                ts = max(data_0['timestamp'], data_1['timestamp'])
+                if arb_yld > target:
+                    arbs.append({
+                        'arb_id': last_id,
                         'mode': 'yield_target',
-                        'arb_yld': _arb,
-                        'vol': min(
-                            data_0['amount'],
-                            data_1['amount']),
-                        'dir': 'DOWN',
-                    }
-    return arbs
+			'base_currency': data_0['pair'].split('-')[0],
+			'quote_currency': data_0['pair'].split('-')[1],
+			'instrument_pair': data_0['pair'],
+			'ask_exchange': data_0['feed'],
+			'bid_exchange': data_1['feed'],
+                        'arb': arb_spr,
+                        'arb_yield': arb_yld,
+                        'volume': vol,
+			'profit': vol*arb_spr,
+			'ask_price': data_0['price'],
+			'bid_price': data_1['price'],
+			'timestamp': ts,
+                    })
+    return arbs, last_id
 
-def get_arbs(data):
+def get_arbs(data, last_id):
     arb_opps, new_data = filter_arb_opps(create_arb_dict(data))
-    arbs = calc_arbs(arb_opps, new_data, 0, mode='arb_vol')
-    arbs = {
-        ex_p:{
-            _p:arbs[ex_p][_p] for _p,a in p.items()
-            if not ('u' in a or 'd' in a)
-        }
-        for ex_p,p in arbs.items()
-    }
-    arbs = {ex_p:p for ex_p,p in arbs.items() if p}
-    return arbs
+    arbs, last_id = calc_arbs(arb_opps, new_data, 0, last_id, mode='arb_vol')
+    return arbs, last_id
 
 if __name__ == '__main__':
     with open('data_arb_test.json', 'r') as f:
