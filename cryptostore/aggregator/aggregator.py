@@ -32,7 +32,7 @@ class Aggregator(Process):
         super().__init__()
         self.daemon = True
         self.mysql_client = None
-        self.mysql_last_arb_id = None
+        self.last_arb_id = None
 
     def run(self):
         LOG.info("Aggregator running on PID %d", os.getpid())
@@ -41,9 +41,9 @@ class Aggregator(Process):
         self.mysql_client = MySQLClient(loop)
         _last_arb_id = loop.run_until_complete(self.mysql_client.get_last_arb_id())
         if not _last_arb_id == None:
-            self.mysql_last_arb_id = int(_last_arb_id[0])
+            self.last_arb_id = int(_last_arb_id[0])
         else:
-            self.mysql_last_arb_id = 0
+            self.last_arb_id = 0
         loop.create_task(self.loop())
         try:
             loop.run_forever()
@@ -53,29 +53,8 @@ class Aggregator(Process):
             LOG.error("Aggregator running on PID %d died due to exception", os.getpid(), exc_info=True)
 
     async def write_arbs(self, data):
-        arbs = arb.get_arbs(data)
-        rows = []
-        row = {}
-        for ex_pair in arbs:
-            for p, _arb in arbs[ex_pair].items():
-                self.mysql_last_arb_id += 1
-                row = {
-                    'arb_id': self.mysql_last_arb_id,
-                    'ask_price': 1,
-                    'bid_price': 2,
-                    'volume': _arb['vol'],
-                    'base_currency': p.split('-')[0],
-                    'quote_currency': p.split('-')[1],
-                    'instrument_pair': p,
-                    'ask_exchange': ex_pair.split('/')[0],
-                    'bid_exchange': ex_pair.split('/')[1],
-                    'arb': _arb['arb_yld'],
-                    'arb_type': _arb['mode'],
-                    'profit': 3,
-                    'timestamp': time.time()
-                }
-                rows.append(row)
-        mysql_task = [self.mysql_client.insert_dicts('Arb', rows)]
+        arbs, self.last_arb_id = arb.get_arbs(data, self.last_arb_id)
+        mysql_task = [self.mysql_client.insert_dicts('Arb', arbs)]
         await asyncio.gather(*mysql_task)
 
     async def loop(self):
