@@ -55,16 +55,16 @@ class InfluxDB(Store):
                 used_ts.add(ts)
                 if 'id' in entry:
                     agg.append(
-                        f'{data_type}-{exchange},pair={pair},exchange={exchange} side="{entry["side"]}",id="{entry["id"]}",amount={entry["amount"]},price={entry["price"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
+                        f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]} side="{entry["side"]}",id="{entry["id"]}",amount={entry["amount"]},price={entry["price"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
                 else:
                     agg.append(
-                        f'{data_type}-{exchange},pair={pair},exchange={exchange} side="{entry["side"]}",amount={entry["amount"]},price={entry["price"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
+                        f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]} side="{entry["side"]}",amount={entry["amount"]},price={entry["price"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
         elif data_type == STATS:
             for entry, granularity in self.data:
                 typed_entry: Stats = entry
                 ts = int(Decimal(typed_entry.ts) * 1000000000)
                 agg.append(
-                    f'{data_type}-{exchange},pair={pair},exchange={exchange},granularity={granularity} '
+                    f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]},granularity={granularity} '
                     f'open={typed_entry.open},high="{typed_entry.high}",low={typed_entry.low},close={typed_entry.close}'
                     f',volume={typed_entry.volume} {ts}'
                 )
@@ -73,7 +73,7 @@ class InfluxDB(Store):
             for entry in self.data:
                 ts = int(Decimal(entry["timestamp"]) * 1000000000)
                 agg.append(
-                    f'{data_type}-{exchange},pair={pair},exchange={exchange} bid={entry["bid"]},ask={entry["ask"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
+                    f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]} bid={entry["bid"]},ask={entry["ask"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
 
         elif data_type == L2_BOOK:
             for entry in self.data:
@@ -83,7 +83,7 @@ class InfluxDB(Store):
                 used_ts.add(ts)
 
                 agg.append(
-                    f'{data_type}-{exchange},pair={pair},exchange={exchange},delta={entry["delta"]} side="{entry["side"]}",timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]},price={entry["price"]},amount={entry["size"]} {ts}')
+                    f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]},delta={entry["delta"]} side="{entry["side"]}",timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]},price={entry["price"]},amount={entry["size"]} {ts}')
         elif data_type == L3_BOOK:
             for entry in self.data:
                 ts = int(Decimal(entry["timestamp"]) * 1000000000)
@@ -92,19 +92,19 @@ class InfluxDB(Store):
                 used_ts.add(ts)
 
                 agg.append(
-                    f'{data_type}-{exchange},pair={pair},exchange={exchange},delta={entry["delta"]} side="{entry["side"]}",id="{entry["order_id"]}",timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]},price="{entry["price"]}",amount="{entry["size"]}" {ts}')
+                    f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]},delta={entry["delta"]} side="{entry["side"]}",id="{entry["order_id"]}",timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]},price="{entry["price"]}",amount="{entry["size"]}" {ts}')
                 ts += 1
         elif data_type == FUNDING:
             for entry in self.data:
                 formatted = [f"{key}={value}" for key, value in entry.items() if isinstance(value, float)]
                 formatted = ','.join(
                     formatted + [f'{key}="{value}"' for key, value in entry.items() if not isinstance(value, float)])
-                agg.append(f'{data_type}-{exchange},pair={pair},exchange={exchange} {formatted}')
+                agg.append(f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]} {formatted}')
         elif data_type == OPEN_INTEREST:
             for entry in self.data:
                 ts = int(Decimal(entry["timestamp"]) * 1000000000)
                 agg.append(
-                    f'{data_type}-{exchange},pair={pair},exchange={exchange} open_interest={entry["open_interest"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
+                    f'{data_type}-{entry["feed"]},pair={entry["pair"]},exchange={entry["feed"]} open_interest={entry["open_interest"]},timestamp={entry["timestamp"]},receipt_timestamp={entry["receipt_timestamp"]} {ts}')
 
         # https://v2.docs.influxdata.com/v2.0/write-data/best-practices/optimize-writes/
         # Tuning docs indicate 5k is the ideal chunk size for batch writes
