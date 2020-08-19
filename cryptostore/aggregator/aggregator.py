@@ -57,6 +57,19 @@ class Aggregator(Process):
         mysql_task = [self.mysql_client.insert_dicts('Arb', arbs)]
         await asyncio.gather(*mysql_task)
 
+    def collect_stats(self, data, exchange, pair, stats_cache):
+        LOG.info('HAVING trades')
+        stats_to_write = []
+        for trade in data:
+            if 'id' not in trade:
+                trade['id'] = None
+            typed_trade = Trade(**trade)
+            update_stats(stats_cache[exchange][pair], typed_trade, stats_to_write)
+        LOG.info('DONE computing stats for %s-%s', exchange, pair)
+        return stats_to_write
+#        self.store.aggregate(stats_to_write)
+#        store.write(exchange, STATS, pair, time.time())
+
     async def loop(self):
         if self.config.cache == 'redis':
             cache = Redis(ip=self.config.redis['ip'],
@@ -69,6 +82,7 @@ class Aggregator(Process):
             cache = Kafka(self.config.kafka['ip'],
                           self.config.kafka['port'],
                           flush=self.config.kafka['start_flush'])
+        self.store = Storage(self.config) ### tmp
 
         interval = self.config.storage_interval
         time_partition = False
@@ -108,9 +122,10 @@ class Aggregator(Process):
                         interval_start = end + timedelta(seconds=interval + 1)
                     start, end = get_time_interval(interval_start, base_interval, multiplier=multiplier)
                 if 'exchanges' in self.config and self.config.exchanges:
-                    store = Storage(self.config) ### tmp
                     data_arb = {}
                     for exchange in self.config.exchanges:
+                        stats_all = [] ### Stats from each loop iter stored here
+                        data_all = [] ### Data... ""
                         data_arb[exchange] = {}
                         for dtype in self.config.exchanges[exchange]:
                             # Skip over the retries arg in the config if present.
@@ -124,27 +139,36 @@ class Aggregator(Process):
 #                                store = Storage(self.config)
                                 LOG.info('Reading %s-%s-%s', exchange, dtype, pair)
                                 data = cache.read(exchange, dtype, pair, start=start, end=end)
+                                data_all.append(data)
                                 data_arb[exchange][pair] = data
                                 if len(data) == 0:
                                     LOG.info('No data for %s-%s-%s', exchange, dtype, pair)
                                     continue
+                                #
                                 if dtype == TRADES:
-                                    LOG.info('HAVING trades')
-                                    stats_to_write = []
-                                    for trade in data:
-                                        if 'id' not in trade:
-                                            trade['id'] = None
-                                        typed_trade = Trade(**trade)
-                                        update_stats(stats_cache[exchange][pair], typed_trade, stats_to_write)
-                                    LOG.info('DONE computing stats for %s-%s', exchange, pair)
-                                    store.aggregate(stats_to_write)
-                                    store.write(exchange, STATS, pair, time.time())
-                                store.aggregate(data)
-                                store.write(exchange, dtype, pair, time.time())
+                                    stats_all.append(self.collect_stats(data, exchange, pair, stats_cache))
+#                                    LOG.info('HAVING trades')
+#                                    stats_to_write = []
+#                                    for trade in data:
+#                                        if 'id' not in trade:
+#                                            trade['id'] = None
+#                                        typed_trade = Trade(**trade)
+#                                        update_stats(stats_cache[exchange][pair], typed_trade, stats_to_write)
+#                                    LOG.info('DONE computing stats for %s-%s', exchange, pair)
+#                                    store.aggregate(stats_to_write)
+#                                    store.write(exchange, STATS, pair, time.time())
+                                #
+#                                self.store.aggregate(data)
+#                                self.store.write(exchange, dtype, pair, time.time())
 
                                 cache.delete(exchange, dtype, pair)
-                                LOG.info('Write Complete %s-%s-%s', exchange, dtype, pair)
+#                                LOG.info('Write Complete %s-%s-%s', exchange, dtype, pair)
                     #
+                    self.store.aggregate(stats_all)
+                    self.store.write(exchange, STATS, pair, time.time())
+                    if any(data_all):
+                        self.store.aggregate(data_all)
+                        self.store.write(exchange, dtype, pair, time.time())
                     if data_arb:
                         await self.write_arbs(data_arb)
                     #
