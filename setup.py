@@ -39,7 +39,8 @@ setup(
         "pyyaml",
         "pyarrow",
         "aiohttp",
-        "aiomysql"
+        "aiomysql",
+        "pymysql",
     ],
     extras_require={
         'redis': ['redis', 'aioredis'],
